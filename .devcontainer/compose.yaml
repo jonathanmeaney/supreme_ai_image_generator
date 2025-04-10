@@ -1,0 +1,84 @@
+name: "supreme_ai_image_generator"
+
+services:
+  rails-app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+
+    volumes:
+    - ../..:/workspaces:cached
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    # Uncomment the next line to use a non-root user for all processes.
+    # user: vscode
+
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally.
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+
+# services:
+  # app:
+  #   build:
+  #     context: ..
+  #     dockerfile: .devcontainer/Dockerfile
+  #   container_name: app
+  #   volumes:
+  #     - ../..:/workspaces:cached
+  #   working_dir: /workspaces/supreme-ai-image-generator
+  #   # command: foreman start
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     - redis
+
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: redis
+  #   ports:
+  #     - "6379:6379"
+# services:
+#   app:
+#     container_name: app
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     env_file:
+#       - .env
+#     volumes:
+#       - ../..:/workspaces:cached
+#     working_dir: /workspaces/supreme-ai-image-generator
+#     command: bundle exec foreman start
+#     depends_on:
+#       - redis
+    # Overrides default command so things don't shut down after the process ends.
+    # command: bundle exec rails server -b 0.0.0.0 -p 3000
+    # command: sleep infinity
+    # command: bundle exec foreman start
+
+    # Uncomment the next line to use a non-root user for all processes.
+    # user: vscode
+
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally.
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+    # depends_on:
+      # - redis
+  # worker:
+  #   container_name: worker
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   env_file:
+  #     - .env
+  #   command: bundle exec sidekiq
+  #   # command: sleep infinity
+  #   depends_on:
+  #     - redis
+  # redis:
+  #   container_name: redis
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+
