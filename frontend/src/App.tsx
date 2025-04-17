@@ -10,7 +10,7 @@ type Image = {
   created_at: string;
 };
 
-const client = new ImageClient({ baseUrl: 'http://139.162.161.16:80/api' });
+const client = new ImageClient({ baseUrl: '/api' });
 
 const App = () => {
   const [images, setImages] = useState<Image[]>([]);

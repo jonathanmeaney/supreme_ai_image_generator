@@ -4,5 +4,16 @@ import react from '@vitejs/plugin-react-swc'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: "/supreme_ai_image_generator/"
+  base: "/supreme_ai_image_generator/",
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://app:3000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })

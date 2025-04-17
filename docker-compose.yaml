@@ -36,3 +36,18 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    volumes:
+      - ./frontend:/app:cached
+    ports:
+      - "5173:5173"
+    environment:
+      # for file‑watching in Docker on some OSes
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      - app
