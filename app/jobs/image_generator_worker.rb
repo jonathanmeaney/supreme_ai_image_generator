@@ -40,7 +40,7 @@ class ImageGeneratorWorker
     Rails.logger.info 'Storing image...'
     result = store_image(image_data, prompt, keywords)
     if result[1]
-      Rails.logger.info "Image generated and stored at: #{storage_url}"
+      Rails.logger.info "Image generated and stored at: #{result[1]}"
     else
       Rails.logger.error 'Failed to store image.'
     end

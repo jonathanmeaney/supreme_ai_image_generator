@@ -66,8 +66,7 @@ module Endpoints
         # enqueue the worker, passing the new record’s id
         ImageGeneratorWorker.perform_async(image.id)
 
-        # return the image’s id (not the Sidekiq jid)
-        { image_id: image.id, status: image.status, keywords: }
+        present image, with: Entities::Image
       end
 
       route_param :id, type: Integer do
