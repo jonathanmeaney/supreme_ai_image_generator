@@ -56,10 +56,27 @@ module Endpoints
         # Combine the keywords
         keywords = [ people.join(' and ') ] + [ chosen_place ] + chosen_things
 
-        # Enqueue the background job with the generated keywords
-        jid = ImageGeneratorWorker.perform_async(keywords)
+        # create the record, defaults to status: :pending
+        image = Image.create!(
+          keywords: keywords.to_json,
+          prompt: nil,
+          image_name: nil
+        )
 
-        { job_id: jid, message: 'Image generation job enqueued.', keywords: keywords }
+        # enqueue the worker, passing the new record’s id
+        ImageGeneratorWorker.perform_async(image.id)
+
+        # return the image’s id (not the Sidekiq jid)
+        { image_id: image.id, status: image.status, keywords: }
+      end
+
+      route_param :id, type: Integer do
+        desc 'Fetch a single Image by its ID'
+        get do
+          image = Image.find_by(id: params[:id])
+          error!({ error: 'Not Found' }, 404) unless image
+          present image, with: Entities::Image
+        end
       end
     end
   end

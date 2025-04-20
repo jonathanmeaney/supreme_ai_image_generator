@@ -10,13 +10,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_07_194750) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_20_193210) do
   create_table "images", force: :cascade do |t|
     t.text "prompt"
     t.text "keywords"
     t.string "image_name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "status", default: 0, null: false
   end
 
   create_table "profiles", force: :cascade do |t|

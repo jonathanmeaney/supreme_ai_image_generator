@@ -1,9 +1,11 @@
 export type Image = {
+  id: number;
   prompt: string;
   keywords: string[];
   image_name: string;
   image_url: string;
   created_at: string;
+  status: string;
 };
 
 export type Pagination = {

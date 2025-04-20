@@ -9,7 +9,13 @@ require 'fileutils'
 class ImageGeneratorWorker
   include Sidekiq::Job
 
-  def perform(keywords)
+  def perform(image_id)
+    image = Image.find(image_id)
+
+    # mark in‐flight
+    image.update!(status: :in_progress)
+
+    keywords = image.keywords_array
     Rails.logger.info "Job started with keywords: #{keywords.inspect}"
 
     # Step 1: Generate a detailed image prompt using ChatGPT API
@@ -32,14 +38,22 @@ class ImageGeneratorWorker
 
     # Step 3: Store the image file on S3 (or locally) and create an Image model record.
     Rails.logger.info 'Storing image...'
-    storage_url = store_image(image_data, prompt, keywords)
-    if storage_url
+    result = store_image(image_data, prompt, keywords)
+    if result[1]
       Rails.logger.info "Image generated and stored at: #{storage_url}"
     else
       Rails.logger.error 'Failed to store image.'
     end
+
+    image.update!(
+      prompt:,
+      image_name: result[0],
+      image_url: result[1],
+      status: :complete
+    )
   rescue StandardError => e
-    Rails.logger.error "An unexpected error occurred in perform: #{e.message}\n#{e.backtrace.join("\n")}"
+    image.update!(status: :error)
+    Rails.logger.error("ImageGeneratorWorker failed for Image##{image_id}: #{e.message}")
   end
 
   private
@@ -72,9 +86,6 @@ class ImageGeneratorWorker
       Rails.logger.error "ChatGPT API call failed: #{response.code} #{response.body}"
       nil
     end
-  rescue StandardError => e
-    Rails.logger.error "Error in generate_prompt: #{e.message}\n#{e.backtrace.join("\n")}"
-    nil
   end
 
   # Generate an image using OpenAI's DALL·E API.
@@ -90,6 +101,7 @@ class ImageGeneratorWorker
 
     Rails.logger.debug 'Sending request to DALL·E API...'
     res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(req) }
+
     Rails.logger.debug "DALL·E API response code: #{res.code}"
     if res.is_a?(Net::HTTPSuccess)
       response_data = JSON.parse(res.body)
@@ -110,22 +122,13 @@ class ImageGeneratorWorker
       Rails.logger.error "DALL·E API request failed with status: #{res.code} - #{res.body} - Failed Prompt: #{prompt}"
       nil
     end
-  rescue StandardError => e
-    Rails.logger.error "Error in generate_image: #{e.message}\n#{e.backtrace.join("\n")}"
-    nil
   end
 
   # Store the image file on S3 and create an Image model record with prompt and keywords.
   def store_image(image_data, prompt, keywords)
     storage_mode = ENV.fetch('STORAGE_MODE', 's3') # default to s3 if not set
     image_key = "#{SecureRandom.uuid}.jpg"
-
-    image_record = Image.create!(
-      prompt: prompt,
-      keywords: keywords.to_json,
-      image_name: image_key
-    )
-    Rails.logger.info "Image record created with ID #{image_record.id}"
+    url = nil
 
     if storage_mode == 'local'
       Rails.logger.info 'Storing image locally...'
@@ -140,7 +143,7 @@ class ImageGeneratorWorker
       # Instead of storing prompt and keywords on disk, we save them in the Image model
       local_url = "http://localhost:4567/uploads/#{image_key}"
       Rails.logger.info "Local image stored at #{local_url}"
-      local_url
+      url = local_url
     else
       Rails.logger.info 'Storing image to S3...'
       s3_client = Aws::S3::Client.new(
@@ -155,11 +158,10 @@ class ImageGeneratorWorker
       s3_client.put_object(bucket: bucket, key: image_key, body: image_data, acl: 'public-read')
       s3_url = "https://#{bucket}.s3.amazonaws.com/#{image_key}"
       Rails.logger.info "Image stored on S3 at #{s3_url}"
-      s3_url
+      url = s3_url
     end
-  rescue StandardError => e
-    Rails.logger.error "Error in store_image: #{e.message}\n#{e.backtrace.join("\n")}"
-    nil
+
+    [ image_key, url ]
   end
 
   # Alternative method for S3 upload (if needed)

@@ -12,6 +12,11 @@ interface NavigationProps {
   setPage: (page: number) => void;
 }
 
+interface ImageProps {
+  image: Image;
+  onComplete: () => void;
+};
+
 const Navigation = ({
   pagination,
   handlePrev,
@@ -70,6 +75,63 @@ const Navigation = ({
   );
 };
 
+const ImageContainer = ({ image, onComplete }: ImageProps) => {
+  useEffect(() => {
+    // if the record is still pending or in_progress, start polling
+    if (['pending', 'in_progress'].includes(image.status)) {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/images/${image.id}`);
+          if (!res.ok) throw new Error(res.statusText);
+          const updated: Image = await res.json();
+
+         onComplete();
+
+          // stop polling once we're complete (or error, if you like)
+          if (updated.status === 'complete') {
+            clearInterval(interval);
+          }
+        } catch (e) {
+          console.error('Failed to poll image status:', e);
+          // optional: you might choose to clearInterval here on certain errors
+        }
+      }, 10_000);
+
+      // cleanup on unmount
+      return () => clearInterval(interval);
+    }
+  }, [image.id, image.status]);
+
+  return (
+    <div className={styles.imageCard}>
+      {image.image_url ? (
+        <img
+          src={image.image_url}
+          alt={`Image ${image.id}`}
+          className={styles.responsiveImage}
+        />
+      ) : (
+        <div className={styles.spinnerContainer}>
+          <div className={styles.spinner} />
+        </div>
+      )}
+      <div className={styles.textBlock}>
+        <blockquote className={styles.prompt}>{image.prompt}</blockquote>
+        <div className={styles.keywords}>
+          {image.keywords.map((kw: string, i: number) => (
+            <span key={i} className={styles.keywordPill}>
+              {kw}
+            </span>
+          ))}
+        </div>
+        <div className={styles.status}>
+          Status: <strong>{image.status}</strong>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   const [images, setImages] = useState<Image[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -120,9 +182,9 @@ const App = () => {
 
   const handlePostImage = async () => {
     try {
-      await client.createImage();
-      // once enqueued, refetch the first page
-      fetchPage(1);
+      const image = await client.createImage();
+
+      setImages(images => [image, ...images]);
     } catch (error) {
       console.error('Error posting image:', error);
     }
@@ -131,10 +193,10 @@ const App = () => {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Supreme AI Image Generator</h1>
+        <h1>AI Fart 🍑💨</h1>
         <nav className={styles.menu}>
           <button onClick={handlePostImage} className={styles.actionButton}>
-            Add Image
+            Fart 🍑💨
           </button>
         </nav>
       </header>
@@ -155,23 +217,7 @@ const App = () => {
 
       <div className={styles.imageGrid}>
         {images.map((img, idx) => (
-          <div key={idx} className={styles.imageCard}>
-            <img
-              src={img.image_url}
-              alt={`Image ${idx}`}
-              className={styles.responsiveImage}
-            />
-            <div className={styles.textBlock}>
-              <blockquote className={styles.prompt}>{img.prompt}</blockquote>
-              <div className={styles.keywords}>
-                {img.keywords.map((kw, i) => (
-                  <span key={i} className={styles.keywordPill}>
-                    {kw}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
+          <ImageContainer image={img} key={idx} onComplete={ () => fetchPage(1) } />
         ))}
       </div>
 
