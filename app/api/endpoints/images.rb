@@ -1,10 +1,32 @@
 module Endpoints
   class Images < Grape::API
     resource :images do
-      desc 'List generated images and associated metadata'
+      desc 'List generated images and associated metadata, paginated'
+      params do
+        optional :page,      type: Integer, desc: 'Page number',    default: 1
+        optional :per_page,  type: Integer, desc: 'Items per page', default: 20
+      end
       get do
+        page     = params[:page]
+        per_page = params[:per_page]
+
+        # fetch & paginate
         images = Image.order(created_at: :desc)
-        present images, with: Entities::Image
+                      .page(page)
+                      .per(per_page)
+
+        # represent with your Grape Entity
+        payload = {
+          images: Entities::Image.represent(images),
+          pagination: {
+            total_count:  images.total_count,
+            total_pages:  images.total_pages,
+            current_page: images.current_page,
+            per_page:     images.limit_value
+          }
+        }
+
+        present payload
       end
 
       desc 'Enqueue image generation job with random keywords'
