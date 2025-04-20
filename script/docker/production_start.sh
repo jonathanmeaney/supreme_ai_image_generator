@@ -14,7 +14,7 @@ echo "▶ Stopping & removing old containers..."
 docker compose down
 
 echo "▶ Starting services in background..."
-docker compose up -d -b --remove-orphans --force-recreate
+docker compose up -d --build --remove-orphans --force-recreate
 
 echo "✅ All services are up!"
 
