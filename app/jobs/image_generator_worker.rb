@@ -38,17 +38,16 @@ class ImageGeneratorWorker
 
     # Step 3: Store the image file on S3 (or locally) and create an Image model record.
     Rails.logger.info 'Storing image...'
-    result = store_image(image_data, prompt, keywords)
-    if result[1]
-      Rails.logger.info "Image generated and stored at: #{result[1]}"
+    image_key = store_image(image_data, prompt, keywords)
+    if image_key
+      Rails.logger.info "Image generated and stored as: #{image_key}"
     else
       Rails.logger.error 'Failed to store image.'
     end
 
     image.update!(
       prompt:,
-      image_name: result[0],
-      image_url: result[1],
+      image_name: image_key,
       status: :complete
     )
   rescue StandardError => e
@@ -128,7 +127,6 @@ class ImageGeneratorWorker
   def store_image(image_data, prompt, keywords)
     storage_mode = ENV.fetch('STORAGE_MODE', 's3') # default to s3 if not set
     image_key = "#{SecureRandom.uuid}.jpg"
-    url = nil
 
     if storage_mode == 'local'
       Rails.logger.info 'Storing image locally...'
@@ -143,7 +141,6 @@ class ImageGeneratorWorker
       # Instead of storing prompt and keywords on disk, we save them in the Image model
       local_url = "http://localhost:4567/uploads/#{image_key}"
       Rails.logger.info "Local image stored at #{local_url}"
-      url = local_url
     else
       Rails.logger.info 'Storing image to S3...'
       s3_client = Aws::S3::Client.new(
@@ -158,10 +155,9 @@ class ImageGeneratorWorker
       s3_client.put_object(bucket: bucket, key: image_key, body: image_data, acl: 'public-read')
       s3_url = "https://#{bucket}.s3.amazonaws.com/#{image_key}"
       Rails.logger.info "Image stored on S3 at #{s3_url}"
-      url = s3_url
     end
 
-    [ image_key, url ]
+    image_key
   end
 
   # Alternative method for S3 upload (if needed)
