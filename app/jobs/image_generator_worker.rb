@@ -27,29 +27,43 @@ class ImageGeneratorWorker
     end
     Rails.logger.info "Generated prompt: #{prompt}"
 
-    # Step 2: Call OpenAI's DALL·E API with the generated prompt
-    Rails.logger.info 'Generating image with prompt...'
-    image_data = generate_image(prompt)
-    unless image_data
-      Rails.logger.error 'Failed to generate image from DALL·E API.'
-      return
-    end
-    Rails.logger.info "Image data received (size: #{image_data.bytesize} bytes)"
+    if prompt
+      image.update!(prompt:)
 
-    # Step 3: Store the image file on S3 (or locally) and create an Image model record.
-    Rails.logger.info 'Storing image...'
-    image_key = store_image(image_data, prompt, keywords)
-    if image_key
-      Rails.logger.info "Image generated and stored as: #{image_key}"
+      # Step 2: Call OpenAI's DALL·E API with the generated prompt
+      Rails.logger.info 'Generating image with prompt...'
+      image_data = generate_image(prompt)
+      unless image_data
+        Rails.logger.error 'Failed to generate image from DALL·E API.'
+        return
+      end
+      Rails.logger.info "Image data received (size: #{image_data.bytesize} bytes)"
+
+      if image_data
+        # Step 3: Store the image file on S3 (or locally) and create an Image model record.
+        Rails.logger.info 'Storing image...'
+        image_key = store_image(image_data, prompt, keywords)
+        if image_key
+          Rails.logger.info "Image generated and stored as: #{image_key}"
+        else
+          Rails.logger.error 'Failed to store image.'
+        end
+
+        image.update!(
+          image_name: image_key,
+          status: :complete
+        )
+      else
+        image.update!(
+          status: :error
+        )
+      end
     else
-      Rails.logger.error 'Failed to store image.'
+      image.update!(
+        prompt: 'Failed to generate prompt from keywords',
+        status: :error
+      )
     end
-
-    image.update!(
-      prompt:,
-      image_name: image_key,
-      status: :complete
-    )
   rescue StandardError => e
     image.update!(status: :error)
     Rails.logger.error("ImageGeneratorWorker failed for Image##{image_id}: #{e.message}")

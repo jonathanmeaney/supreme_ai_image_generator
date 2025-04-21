@@ -104,18 +104,29 @@ const ImageContainer = ({ image, onComplete }: ImageProps) => {
 
   return (
     <div className={styles.imageCard}>
-      {image.image_url ? (
+      {image.image_url && (
         <img
           src={image.image_url}
           alt={`Image ${image.id}`}
           className={styles.responsiveImage}
         />
-      ) : (
+      )}
+      {['pending', 'in_progress'].includes(image.status) && (
         <div className={styles.spinnerContainer}>
           <div className={styles.spinner} />
         </div>
       )}
       <div className={styles.textBlock}>
+        <div className={styles.status}>
+          <span
+            className={`${styles.statusPill} ${
+              // image.status is one of "pending", "in_progress", "complete", "error"
+              styles[image.status]
+            }`}
+          >
+            {image.status?.replace('_', ' ')}
+          </span>
+        </div>
         <blockquote className={styles.prompt}>{image.prompt}</blockquote>
         <div className={styles.keywords}>
           {image.keywords.map((kw: string, i: number) => (
@@ -123,9 +134,6 @@ const ImageContainer = ({ image, onComplete }: ImageProps) => {
               {kw}
             </span>
           ))}
-        </div>
-        <div className={styles.status}>
-          Status: <strong>{image.status}</strong>
         </div>
       </div>
     </div>
